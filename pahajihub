@@ -3242,4 +3242,5 @@ local ToggleNoAnim = Tab7:Toggle({
             })
         end
     end
+
 })
