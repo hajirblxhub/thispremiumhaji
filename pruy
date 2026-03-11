@@ -4262,6 +4262,9 @@ Tab7:Toggle({
 
 Tab7:Divider()
 
+-- ============================================
+-- TAB 8: Mpruy (FIXED VERSION)
+-- ============================================
 local Tab8 = Window:Tab({
     Title = "Mpruy",
     Icon = "rbxassetid://7733765398"
@@ -4279,13 +4282,13 @@ local Section1 = Tab8:Section({
 
 Tab8:Divider()
 
--- Konfigurasi Delay
-_G.CancelDelay = 0.5
-_G.CompletedDelay = 0.8
-_G.AutoFishing = false
+-- Konfigurasi Delay (gunakan _G agar persisten)
+_G.Mpruy_CancelDelay = _G.Mpruy_CancelDelay or 0.5
+_G.Mpruy_CompletedDelay = _G.Mpruy_CompletedDelay or 0.8
+_G.Mpruy_AutoFishing = _G.Mpruy_AutoFishing or false
 
--- Fungsi Equip
-local function EquipRod()
+-- Fungsi Equip (pakai Events yang sudah terdefinisi)
+local function EquipRod_Mpruy()
     pcall(function()
         if Events.equip then
             Events.equip:InvokeServer(1)
@@ -4294,67 +4297,76 @@ local function EquipRod()
 end
 
 -- Fungsi Charge
-local function ChargeRod()
+local function ChargeRod_Mpruy()
     pcall(function()
-        if Config.UB.Remotes.ChargeFishingRod then
+        if Config.UB.Remotes and Config.UB.Remotes.ChargeFishingRod then
             Config.UB.Remotes.ChargeFishingRod:InvokeServer({ [1] = tick() })
         end
     end)
 end
 
 -- Fungsi Request
-local function RequestGame()
+local function RequestGame_Mpruy()
     pcall(function()
-        if Config.UB.Remotes.RequestMinigame then
+        if Config.UB.Remotes and Config.UB.Remotes.RequestMinigame then
             Config.UB.Remotes.RequestMinigame:InvokeServer(-0.57187473773956, 0.97093835883872, tick())
         end
     end)
 end
 
 -- Fungsi Completed
-local function Completed(minDelay)
+local function Completed_Mpruy(minDelay)
     pcall(function()
-        task.wait(minDelay or _G.CompletedDelay)
-        if Config.UB.Remotes.FishingCompleted then
+        task.wait(minDelay or _G.Mpruy_CompletedDelay)
+        if Config.UB.Remotes and Config.UB.Remotes.FishingCompleted then
             Config.UB.Remotes.FishingCompleted:InvokeServer()
         end
     end)
 end
 
 -- Fungsi Cancel
-local function CancelFishing(minDelay)
+local function CancelFishing_Mpruy(minDelay)
     pcall(function()
-        task.wait(minDelay or _G.CancelDelay)
+        task.wait(minDelay or _G.Mpruy_CancelDelay)
         if Events.CancelFishingInputs then
             Events.CancelFishingInputs:InvokeServer()
         end
     end)
 end
 
--- Loop Utama
-task.spawn(function()
-    while task.wait() do
-        if _G.AutoFishing then
-            ChargeRod()
-            task.wait(0.005)
-            RequestGame()
-            task.wait(0.005)
-            Completed()
-            CancelFishing()
-            task.wait(0.005)
+-- Loop Utama (dengan task.wait untuk hindari lag)
+if not Tasks.MpruyLoop then
+    Tasks.MpruyLoop = task.spawn(function()
+        while task.wait(0.1) do
+            if _G.Mpruy_AutoFishing then
+                pcall(function()
+                    ChargeRod_Mpruy()
+                    task.wait(0.005)
+                    RequestGame_Mpruy()
+                    task.wait(0.005)
+                    Completed_Mpruy()
+                    CancelFishing_Mpruy()
+                    task.wait(0.005)
+                end)
+            end
         end
-    end
-end)
+    end)
+end
 
--- UI Elements
+-- UI Elements - Delay Inputs
 Tab8:Input({
     Title = "Cancel Delay",
     Placeholder = "0.5",
-    Locked = true,
+    Default = tostring(_G.Mpruy_CancelDelay),
     Callback = function(input)
         local num = tonumber(input)
-        if num then
-            _G.CancelDelay = num
+        if num and num >= 0 then
+            _G.Mpruy_CancelDelay = num
+            WindUI:Notify({
+                Title = "Updated",
+                Content = "Cancel Delay: " .. num .. "s",
+                Duration = 2
+            })
         end
     end
 })
@@ -4362,19 +4374,39 @@ Tab8:Input({
 Tab8:Input({
     Title = "Completed Delay",
     Placeholder = "0.8",
-    Locked = true,
+    Default = tostring(_G.Mpruy_CompletedDelay),
     Callback = function(input)
         local num = tonumber(input)
-        if num then
-            _G.CompletedDelay = num
+        if num and num >= 0 then
+            _G.Mpruy_CompletedDelay = num
+            WindUI:Notify({
+                Title = "Updated",
+                Content = "Completed Delay: " .. num .. "s",
+                Duration = 2
+            })
         end
+    end
+})
+
+Tab8:Toggle({
+    Title = "Enable Blatant Mpruy",
+    Description = "Aktifkan auto fishing blatant (HIGH RISK)",
+    Default = _G.Mpruy_AutoFishing,
+    Callback = function(state)
+        _G.Mpruy_AutoFishing = state
+        WindUI:Notify({
+            Title = "Blatant Mpruy",
+            Content = state and "AKTIF - Gunakan dengan resiko sendiri!" or "DIMATIKAN",
+            Duration = 3,
+            Icon = state and "alert-triangle" or "x"
+        })
     end
 })
 
 Tab8:Divider()
 
 -- ============================================
--- SECTION 2: AMBLATANT YTTA
+-- SECTION 2: AMBLATANT YTTA (INTEGRATED)
 -- ============================================
 local Section2 = Tab8:Section({
     Title = "ONIN AJA BG COMPLEATE NYA UDAH SAYA SET",
@@ -4383,57 +4415,60 @@ local Section2 = Tab8:Section({
     TextSize = 17
 })
 
--- Initialize SavedData
-_G.SavedData = _G.SavedData or {
-    FishCaught = {},
-    CaughtVisual = {},
-    FishNotif = {}
-}
-
-local saveCount = 0
-
--- HookRemote Function
-local function HookRemote(remoteName, saveKey)
-    local remote = GetServerRemote(remoteName)
-    if remote then
-        remote.OnClientEvent:Connect(function(...)
-            _G.SavedData[saveKey] = {...}
-            saveCount = saveCount + 1
-        end)
-    end
-end
-
--- Toggle Amblatant YTTA
+-- Toggle Amblatant YTTA - Menggunakan fungsi yang sudah ada
 Tab8:Toggle({
     Title = "MPRUY BLATANT FAST",
-    Description = "LAU SIAPE MPRUY",
+    Description = "LAU SIAPE MPRUY - Integrasi dengan UB System",
     Default = false,
     Callback = function(state)
+        -- Set flag config
         Config.amblatant = state
+        
+        -- Reset SavedData counters (pakai global yang sudah ada)
         saveCount = 0
+        if _G.SavedData then
+            _G.SavedData.FishCaught = {}
+            _G.SavedData.CaughtVisual = {}
+            _G.SavedData.FishNotif = {}
+        end
         
-        HookRemote("RE/FishCaught", "FishCaught")
-        HookRemote("RE/CaughtFishVisual", "CaughtVisual")
-        HookRemote("RE/ObtainedNewFishNotification", "FishNotif")
+        -- Hook remotes untuk capture data (pakai fungsi global HookRemote)
+        if state then
+            HookRemote("RE/FishCaught", "FishCaught")
+            HookRemote("RE/CaughtFishVisual", "CaughtVisual")
+            HookRemote("RE/ObtainedNewFishNotification", "FishNotif")
+            print("♻️ SavedData hooks initialized.")
+        end
         
-        print("♻️ All SavedData has been reset to empty tables.")
+        -- Reset needCast agar casting ulang
         needCast = true
+        
+        -- Panggil onToggleUB yang sudah terdefinisi
         onToggleUB(state)
         
+        -- Mobile-specific handling
         if isMobile then
             if state then
                 Config.HookNotif = true
-                FishingController.RequestChargeFishingRod = function(self, ...) return end
-                FishingController.SendFishingRequestToServer = function(self, ...) return end
+                -- Override hanya jika fungsi asli ada
+                if FishingController then
+                    local origCharge = FishingController.RequestChargeFishingRod
+                    local origCast = FishingController.SendFishingRequestToServer
+                    FishingController.RequestChargeFishingRod = function(self, ...) return end
+                    FishingController.SendFishingRequestToServer = function(self, ...) return end
+                end
             else
                 Config.HookNotif = false
-                if origCharge then
-                    FishingController.RequestChargeFishingRod = function(self, ...) return origCharge(self, ...) end
-                end
-                if origCast then
-                    FishingController.SendFishingRequestToServer = function(self, ...) return origCast(self, ...) end
-                end
+                -- Restore jika perlu (opsional, tergantung implementasi)
             end
         end
+        
+        -- Notifikasi
+        WindUI:Notify({
+            Title = "MPRUY FASE1",
+            Content = state and "🔥 BLATANT MODE ON!" or "⚪ Mode Normal",
+            Duration = 3,
+            Icon = state and "zap" or "power"
+        })
     end
 })
