@@ -124,6 +124,7 @@ if #key < 6 then
 end
 
 -- [SECURITY STRATEGY] Randomized Request Shuffling
+-- Prevents crackers from filtering based on static order (e.g. "Always hook 2nd request")
 local function generateFakeKey()
     local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     local k = ""
@@ -153,6 +154,7 @@ for i, check in ipairs(securityChecks) do
     local res = redeem(check.payload)
     
     if check.type == "FAKE" then
+        -- If Fake Key returns TRUE (Valid), then someone HOOKED the response!
         if res == true then
             securityBreach = true
         end
@@ -171,6 +173,7 @@ local result = finalRealResult
 
 if result == true then
     StarterGui:SetCore("SendNotification", {Title = "NOXIUS PREMIUM", Text = "Key Valid! Loading...", Duration = 5})
+    -- Script continues execution below...
 elseif result == "hwid_limit" then
     LocalPlayer:Kick("[NOXIUS] HWID LIMIT REACHED")
     task.wait(9e9)
@@ -186,11 +189,6 @@ else
     task.wait(9e9)
     return
 end
-
--- ==================================================
--- ORIGINAL SCRIPT (uifree.lua)
--- ==================================================
-
 local RunService = game:GetService("RunService")
 local cloneref = (cloneref or clonereference or function(instance) return instance end)
 local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
@@ -3291,7 +3289,6 @@ end
 Tab5:Toggle({
     Title = "FPS Booster",
     Description = "Boost FPS: hilangkan shadows, reflections, particles, fog, water waves & post effects",
-    Locked = true,
     Default = false,
     Callback = function(value)
         if value then
@@ -3882,7 +3879,6 @@ end
 Tab6:Button({
     Title = "Manual Mining Crystal",
     Description = "Teleport ke Crystal Depth & mining (Balik otomatis)",
-    Locked = true,
     Callback = function()
         if not _G.axeUuid or _G.axeUuid == "" then
             getAxeUUID()
@@ -3933,7 +3929,6 @@ Tab6:Button({
 Tab6:Toggle({
     Title = "Auto Mining Crystal",
     Description = "Otomatis siapkan Axe saat event muncul",
-    Locked = true,
     Default = _G.AutoMining or false,
     Callback = function(state)
         _G.AutoMining = state
@@ -4398,7 +4393,6 @@ local LeviathanThread = nil
 Tab7:Toggle({
     Title = "Auto Leviathan Hunt",
     Description = "Auto teleport ke Leviathan's Den saat zone muncul",
-    Locked = true,
     Default = _G.AutoLeviathanHunt,
     Callback = function(state)
         _G.AutoLeviathanHunt = state
